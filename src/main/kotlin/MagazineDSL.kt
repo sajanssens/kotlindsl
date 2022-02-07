@@ -13,12 +13,19 @@ fun main() {
     val dslJm =
         magazine("Java Magazine", 2021, 4) {
             article {
-                title { text("Kotlin DSLs") }
-                content { +"This is a story about DSLs." }
+                title { innerText("Kotlin DSLs") }
+                content { +"This is a story about DSLs." } // + instead of innerText()
             }
         }
 
     println(dslJm)
+}
+
+// The domain class ---------------
+data class Magazine(val name: String, val year: Int, val nr: Int, var content: String = "") {
+    fun append(s: String) {
+        this.content += s
+    }
 }
 
 // builder for magazine to start with ---------------
@@ -29,18 +36,11 @@ fun magazine(name: String, year: Int, nr: Int, body: Magazine.() -> ARTICLE): Ma
 }
 
 // top level function for root element article ---------------
-fun article(init: ARTICLE.() -> Unit): ARTICLE {
+fun article(body: ARTICLE.() -> Unit): ARTICLE {
     val article = ARTICLE()
-    article.init()
+    article.body()
     return article
     // or shorter equivalent: ARTICLE().apply(init)
-}
-
-// The domain class ---------------
-data class Magazine(val name: String, val year: Int, val nr: Int, var content: String = "") {
-    fun append(s: String) {
-        this.content += s
-    }
 }
 
 // The DSL grammar ---------------
@@ -58,24 +58,24 @@ class Text(val text: String) : Element() {
 abstract class Tag(private val name: String) : Element() {
     protected val tree = mutableListOf<Element>()
 
-    protected fun <T : Element> initElement(child: T, body: T.() -> Unit = {}) {
-        child.body()
-        tree.add(child)
-    }
-
     override fun render(builder: StringBuilder) {
         builder.append("<$name>")
         tree.forEach { it.render(builder) }
         builder.append("</$name>")
     }
 
-    // for now, every tag can have text content:
-    fun text(s: String) {
+    protected fun <T : Element> initElement(child: T, body: T.() -> Unit = {}) {
+        child.body()
+        tree.add(child)
+    }
+
+    // For now, every tag can have text content:
+    fun innerText(s: String) {
         initElement(Text(s))
     }
 
-    // a trick to avoid calls to the text()-function is to override the unary plus operator;
-    // this improves readability of the dsl
+    // Trick: instead of calling text(), to override the unary plus operator;
+    // this improves readability of the dsl.
     operator fun String.unaryPlus() {
         initElement(Text(this))
     }
@@ -86,6 +86,8 @@ abstract class Tag(private val name: String) : Element() {
         return builder.toString()
     }
 }
+
+// Available TAGs:
 
 class ARTICLE : Tag("article") {
     fun title(body: TITLE.() -> Unit) {
